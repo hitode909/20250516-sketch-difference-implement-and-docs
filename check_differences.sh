@@ -27,7 +27,7 @@ gh_copilot_check() {
   local doc_file=$2
   local impl_content=$3
   local doc_content=$4
-  
+
   # プロンプトの作成
   local prompt="
 以下の実装ファイルとドキュメントファイルを比較し、不一致や矛盾点を見つけてください。

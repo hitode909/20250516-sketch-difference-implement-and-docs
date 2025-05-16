@@ -37,7 +37,7 @@ if (require.main === module) {
 
   let result;
   const operation = args[2] || 'add';
-  
+
   if (operation === 'multiply') {
     result = multiply(args[0], args[1]);
     console.log(`${args[0]} * ${args[1]} = ${result}`);
