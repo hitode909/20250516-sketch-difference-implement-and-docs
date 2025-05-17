@@ -93,14 +93,6 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-// プログラムが現在サポートしているLLMモードをチェックする関数
-func getSupportedLLMModes() []string {
-	return []string{
-		"mock",    // モックモード（デフォルト）
-		"openai",  // OpenAI APIモード
-	}
-}
-
 // テスト用のモック機能
 func mockLlmCheck(implFile, docFile string) string {
 	// モックによる判定ロジック
