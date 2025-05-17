@@ -27,8 +27,8 @@ func main() {
 		fmt.Printf("使用方法: %s <実装ファイル> <ドキュメントファイル>\n", os.Args[0])
 		fmt.Println("環境変数:")
 		fmt.Printf("  LLM_MODE=xxx   : 使用するLLMモード（現在: %s）\n", llmMode)
-		fmt.Printf("  OPENAI_API_KEY : OpenAI APIキー（%s）\n", 
-			func() string { 
+		fmt.Printf("  OPENAI_API_KEY : OpenAI APIキー（%s）\n",
+			func() string {
 				if os.Getenv("OPENAI_API_KEY") != "" {
 					return "設定済み"
 				}
