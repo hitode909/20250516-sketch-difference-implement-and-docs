@@ -112,8 +112,6 @@ func mockLlmCheck(implFile, docFile string) string {
 	return "不明なディレクトリ構造です"
 }
 
-
-
 // OpenAI APIを使用して差異を分析
 func openaiLlmCheck(implFile, docFile, implContent, docContent string) string {
 	apiKey := os.Getenv("OPENAI_API_KEY")
