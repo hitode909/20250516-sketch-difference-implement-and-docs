@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/sashabaranov/go-openai"
 )
 
 // 実装とドキュメントの矛盾を検出するプログラム
@@ -24,8 +27,15 @@ func main() {
 	if len(os.Args) != 3 {
 		fmt.Printf("使用方法: %s <実装ファイル> <ドキュメントファイル>\n", os.Args[0])
 		fmt.Println("環境変数:")
-		fmt.Printf("  USE_GH=1    : GitHub CLIを使用（%s）\n", os.Getenv("USE_GH"))
-		fmt.Printf("  LLM_MODE=xxx: 使用するLLMモード（現在: %s）\n", llmMode)
+		fmt.Printf("  USE_GH=1       : GitHub CLIを使用（%s）\n", os.Getenv("USE_GH"))
+		fmt.Printf("  LLM_MODE=xxx   : 使用するLLMモード（現在: %s）\n", llmMode)
+		fmt.Printf("  OPENAI_API_KEY : OpenAI APIキー（%s）\n", 
+			func() string { 
+				if os.Getenv("OPENAI_API_KEY") != "" {
+					return "設定済み"
+				}
+				return "未設定"
+			}())
 		os.Exit(1)
 	}
 
@@ -62,6 +72,9 @@ func main() {
 	if useGh == "1" || llmMode == "gh" {
 		fmt.Println("GitHub CLIを使って実装とドキュメントの矛盾を分析しています...")
 		result = ghLlmCheck(implFile, docFile, string(implContent), string(docContent))
+	} else if llmMode == "openai" {
+		fmt.Println("OpenAI APIを使って実装とドキュメントの矛盾を分析しています...")
+		result = openaiLlmCheck(implFile, docFile, string(implContent), string(docContent))
 	} else {
 		fmt.Println("モックLLMを使って実装とドキュメントの矛盾を分析しています...")
 		result = mockLlmCheck(implFile, docFile)
@@ -89,8 +102,9 @@ func fileExists(filename string) bool {
 // プログラムが現在サポートしているLLMモードをチェックする関数
 func getSupportedLLMModes() []string {
 	return []string{
-		"mock", // モックモード（デフォルト）
-		"gh",   // GitHub Copilotモード
+		"mock",    // モックモード（デフォルト）
+		"gh",      // GitHub Copilotモード
+		"openai",  // OpenAI APIモード
 	}
 }
 
@@ -159,6 +173,72 @@ func ghLlmCheck(implFile, docFile, implContent, docContent string) string {
 	}
 
 	result := string(output)
+
+	// 結果の後処理
+	if strings.Contains(result, "矛盾") || strings.Contains(result, "不一致") {
+		// 行を分割して処理
+		lines := strings.Split(result, "\n")
+		var filteredLines []string
+
+		for _, line := range lines {
+			if strings.Contains(line, fmt.Sprintf("%s,%s:", implFile, docFile)) {
+				filteredLines = append(filteredLines, line)
+			}
+		}
+
+		if len(filteredLines) > 0 {
+			return strings.Join(filteredLines, "\n")
+		}
+		return fmt.Sprintf("%s,%s:矛盾が見つかりましたが、詳細は解析できませんでした", implFile, docFile)
+	}
+
+	// 矛盾がない場合は空文字を返す
+	return ""
+}
+
+// OpenAI APIを使用して差異を分析
+func openaiLlmCheck(implFile, docFile, implContent, docContent string) string {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		log.Println("エラー: OPENAI_API_KEYが設定されていません")
+		return fmt.Sprintf("%s,%s:矛盾の分析中にエラーが発生しました", implFile, docFile)
+	}
+
+	client := openai.NewClient(apiKey)
+	ctx := context.Background()
+
+	prompt := fmt.Sprintf(`以下の実装ファイルとドキュメントファイルを比較し、不一致や矛盾点を見つけてください。
+各矛盾点は「%s,%s:矛盾内容」の形式で1行ずつ出力してください。
+矛盾がない場合は何も出力しないでください。
+
+== 実装ファイル (%s) ==
+%s
+
+== ドキュメントファイル (%s) ==
+%s`, implFile, docFile, implFile, implContent, docFile, docContent)
+
+	req := openai.ChatCompletionRequest{
+		Model: openai.GPT3Dot5Turbo,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: "あなたはコードとドキュメントの間の矛盾を検出し、明確に報告する専門家です。",
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: prompt,
+			},
+		},
+		MaxTokens: 1000,
+	}
+
+	resp, err := client.CreateChatCompletion(ctx, req)
+	if err != nil {
+		log.Printf("エラー: OpenAI APIの呼び出しに失敗しました: %s\n", err)
+		return fmt.Sprintf("%s,%s:矛盾の分析中にエラーが発生しました", implFile, docFile)
+	}
+
+	result := resp.Choices[0].Message.Content
 
 	// 結果の後処理
 	if strings.Contains(result, "矛盾") || strings.Contains(result, "不一致") {
