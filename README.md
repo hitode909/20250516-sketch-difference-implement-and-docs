@@ -29,5 +29,6 @@ go build -o check_differences
 ```
 
 環境変数:
-- `USE_GH=1`: GitHub CLIを使用してLLM分析を行う
-- `LLM_MODE=gh`: GitHub CLIを使用する別の指定方法
+- `LLM_MODE=mock`: モックモードで実行（デフォルト）
+- `LLM_MODE=openai`: OpenAI APIを使用してLLM分析を行う
+- `OPENAI_API_KEY`: OpenAI APIを使用する際に必要なAPIキー
