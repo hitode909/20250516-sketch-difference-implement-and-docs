@@ -123,7 +123,7 @@ func openaiLlmCheck(implFile, docFile, implContent, docContent string) string {
 	client := openai.NewClient(apiKey)
 	ctx := context.Background()
 
-	prompt := fmt.Sprintf(`以下の実装ファイルとドキュメントファイルを比較し、不一致や矛盾点を見つけてください。
+	prompt := fmt.Sprintf(`以下の実装ファイルとドキュメントファイルを比較し、不一致や矛盾点を見つけてください。実装とドキュメントの抽象度の違いは許可し、明らかに事実が異なる場指してください。
 各矛盾点は「%s,%s:矛盾内容」の形式で1行ずつ出力してください。
 矛盾がない場合は何も出力しないでください。
 
