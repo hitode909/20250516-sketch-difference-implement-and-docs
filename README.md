@@ -14,12 +14,6 @@
 
 ## 使用方法
 
-### シェルスクリプト版 (旧版)
-```bash
-./check_differences.sh <実装ファイル> <ドキュメントファイル>
-```
-
-### Go版 (新版)
 ```bash
 # ビルドする
 go build -o check_differences
