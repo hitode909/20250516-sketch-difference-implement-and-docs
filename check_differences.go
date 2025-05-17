@@ -136,7 +136,7 @@ func openaiLlmCheck(implFile, docFile, implContent, docContent string) string {
 %s`, implFile, docFile, implFile, implContent, docFile, docContent)
 
 	req := openai.ChatCompletionRequest{
-		Model: openai.GPT3Dot5Turbo,
+		Model: openai.GPT4o,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
