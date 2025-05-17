@@ -2,9 +2,7 @@
 set -e
 
 # 使用するLLMモードの設定（デフォルトはモック）
-# USE_GH=1 ./check_differences.sh のように実行すると、実際のGitHub CLIを使用
-USE_GH=${USE_GH:-0}
-LLM_MODE=${LLM_MODE:-"mock"} # "mock", "gh", "openai" などに対応可能
+LLM_MODE=${LLM_MODE:-"mock"} # "mock", "gh", "openai" などに対応可能。現状モックモードのみ実装済み
 
 # 引数チェック
 if [ $# -ne 2 ]; then
