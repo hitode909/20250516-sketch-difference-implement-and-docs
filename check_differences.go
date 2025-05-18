@@ -106,7 +106,7 @@ func mockLlmCheck(implFile, docFile string) string {
 		var contradictions []string
 		contradictions = append(contradictions, fmt.Sprintf("%s,%s:add関数は数値変換を行っていません", implFile, docFile))
 		contradictions = append(contradictions, fmt.Sprintf("%s,%s:multiply関数がドキュメントに記載されていません", implFile, docFile))
-		contradictions = append(contradictions, fmt.Sprintf("%s,%s:コマンドラインは3つの引数を受け付けますが、ドキュメントでは2つと記載", implFile, docFile))
+		contradictions = append(contradictions, fmt.Sprintf("%s,%s:オプションの第3引数（操作タイプ）がドキュメントに記載されていません", implFile, docFile))
 		return strings.Join(contradictions, "\n")
 	}
 	return "不明なディレクトリ構造です"
