@@ -32,22 +32,21 @@ if (!fs.existsSync(checkDiffProgram)) {
 
 /**
  * check_differences実行ファイルを実行してテスト
- * @param {string} implFile 実装ファイルパス
- * @param {string} docFile ドキュメントファイルパス
+ * @param {string[]} files テスト対象のファイルパスの配列
  * @param {boolean} expectedContradiction 矛盾があることを期待するか
  * @param {string} llmMode 使用するLLMモード (省略時はmock)
  * @returns {object} テスト結果
  */
-function runContradictionTest(implFile, docFile, expectedContradiction, llmMode = "mock") {
-  console.log(`テスト実行: ${implFile} と ${docFile} の矛盾チェック (モード: ${llmMode})`);
+function runContradictionTest(files, expectedContradiction, llmMode = "mock") {
+  console.log(`テスト実行: ${files.join(' と ')} の矛盾チェック (モード: ${llmMode})`);
   console.log(`期待される結果: 矛盾${expectedContradiction ? 'あり' : 'なし'}`);
 
   try {
     // 環境変数の設定
     const env = { ...process.env, LLM_MODE: llmMode };
-    
+
     // check_differencesを実行
-    const result = spawnSync(checkDiffProgram, [implFile, docFile], {
+    const result = spawnSync(checkDiffProgram, files, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       env: env
@@ -84,7 +83,7 @@ function runContradictionTest(implFile, docFile, expectedContradiction, llmMode 
     console.log('-'.repeat(40));
 
     return {
-      files: `${implFile} と ${docFile}`,
+      files: files.join(' と '),
       expectedContradiction,
       actualExitCode: exitCode,
       passed,
@@ -95,7 +94,7 @@ function runContradictionTest(implFile, docFile, expectedContradiction, llmMode 
     console.error(`テスト実行中にエラーが発生しました: ${err.message}`);
     allTestsPassed = false;
     return {
-      files: `${implFile} と ${docFile}`,
+      files: files.join(' と '),
       expectedContradiction,
       passed: false,
       error: err.message
@@ -112,20 +111,24 @@ const correctDocFile = path.join(workDir, 'correct', 'calculator.md');
 const incorrectImplFile = path.join(workDir, 'incorrect', 'calculator.js');
 const incorrectDocFile = path.join(workDir, 'incorrect', 'calculator.md');
 
+// テスト対象ファイルをグループ化
+const correctFiles = [correctImplFile, correctDocFile];
+const incorrectFiles = [incorrectImplFile, incorrectDocFile];
+
 // mockモードでのテスト
 console.log('=== mockモードでのテスト ===');
 // correct/のテスト - 矛盾なしを期待
-testResults.push(runContradictionTest(correctImplFile, correctDocFile, false, "mock"));
+testResults.push(runContradictionTest(correctFiles, false, "mock"));
 // incorrect/のテスト - 矛盾ありを期待
-testResults.push(runContradictionTest(incorrectImplFile, incorrectDocFile, true, "mock"));
+testResults.push(runContradictionTest(incorrectFiles, true, "mock"));
 
 // OpenAI APIキーが設定されている場合はopenaiモードでもテスト
 if (process.env.OPENAI_API_KEY) {
   console.log('=== openaiモードでのテスト ===');
   // correct/のテスト - 矛盾なしを期待
-  testResults.push(runContradictionTest(correctImplFile, correctDocFile, false, "openai"));
+  testResults.push(runContradictionTest(correctFiles, false, "openai"));
   // incorrect/のテスト - 矛盾ありを期待
-  testResults.push(runContradictionTest(incorrectImplFile, incorrectDocFile, true, "openai"));
+  testResults.push(runContradictionTest(incorrectFiles, true, "openai"));
 } else {
   console.log('OPENAI_API_KEYが設定されていないため、openaiモードのテストはスキップします');
 }
