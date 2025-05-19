@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
@@ -131,6 +133,16 @@ func mockLlmCheck(files []string, contents map[string]string) string {
 	}
 }
 
+// 構造化されたレスポンス用の型定義
+type StructuredResponse struct {
+	Summary string `json:"summary"`
+	Errors  []struct {
+		File1       string `json:"file1"`
+		File2       string `json:"file2"`
+		Description string `json:"description"`
+	} `json:"errors"`
+}
+
 // OpenAI APIを使用して差異を分析
 func openaiLlmCheck(files []string, contents map[string]string) string {
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -145,8 +157,21 @@ func openaiLlmCheck(files []string, contents map[string]string) string {
 	// プロンプトの作成
 	promptBuilder := strings.Builder{}
 	promptBuilder.WriteString("以下の複数ファイルを比較し、不一致や矛盾点を見つけてください。\n")
-	promptBuilder.WriteString("各矛盾点は「ファイル1,ファイル2:矛盾内容」の形式で1行ずつ出力してください。\n")
-	promptBuilder.WriteString("矛盾がない場合は「問題なし」と出力してください。\n\n")
+	promptBuilder.WriteString("レスポンスは必ず以下のJSON形式で返してください：\n")
+	promptBuilder.WriteString("```json\n")
+	promptBuilder.WriteString("{\n")
+	promptBuilder.WriteString("  \"summary\": \"総評テキスト（矛盾の概要や全体的な評価）\",\n")
+	promptBuilder.WriteString("  \"errors\": [\n")
+	promptBuilder.WriteString("    {\n")
+	promptBuilder.WriteString("      \"file1\": \"ファイル1のパス\",\n")
+	promptBuilder.WriteString("      \"file2\": \"ファイル2のパス\",\n")
+	promptBuilder.WriteString("      \"description\": \"矛盾の詳細説明\"\n")
+	promptBuilder.WriteString("    },\n")
+	promptBuilder.WriteString("    // 他の矛盾点...\n")
+	promptBuilder.WriteString("  ]\n")
+	promptBuilder.WriteString("}\n")
+	promptBuilder.WriteString("```\n")
+	promptBuilder.WriteString("矛盾がない場合は、errors配列を空にしてください。\n\n")
 
 	// 各ファイルの内容を追加
 	for _, file := range files {
@@ -160,7 +185,7 @@ func openaiLlmCheck(files []string, contents map[string]string) string {
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
-				Content: "あなたはコードとドキュメントの間の矛盾を検出し、明確に報告する専門家です。",
+				Content: "あなたはコードとドキュメントの間の矛盾を検出し、明確に報告する専門家です。必ず指定されたJSON形式で回答してください。",
 			},
 			{
 				Role:    openai.ChatMessageRoleUser,
@@ -177,32 +202,77 @@ func openaiLlmCheck(files []string, contents map[string]string) string {
 	}
 
 	result := resp.Choices[0].Message.Content
-	log.Printf("OpenAI APIからの応答: %s\n", result)
+	// デバッグ用にログに出力（本番環境では削除可能）
+	log.Printf("OpenAI APIからの応答を受信しました\n")
 
-	// 結果の後処理
-	if strings.Contains(result, "矛盾") || strings.Contains(result, "不一致") {
-		// 行を分割して処理
-		lines := strings.Split(result, "\n")
-		var filteredLines []string
+	// JSONレスポンスを抽出（コードブロックで囲まれている可能性があるため）
+	jsonStr := extractJSON(result)
+	if jsonStr == "" {
+		log.Println("エラー: JSONレスポンスを抽出できませんでした")
+		return fmt.Sprintf("%s:矛盾の分析中にエラーが発生しました", strings.Join(files, ","))
+	}
 
-		for _, line := range lines {
-			// 矛盾の形式「ファイル1,ファイル2:矛盾内容」をチェック
-			for i, file1 := range files {
-				for j, file2 := range files {
-					if i != j && strings.Contains(line, fmt.Sprintf("%s,%s:", file1, file2)) {
-						filteredLines = append(filteredLines, line)
-						break
-					}
-				}
-			}
-		}
+	// JSONをパース
+	var structuredResp StructuredResponse
+	if err := json.Unmarshal([]byte(jsonStr), &structuredResp); err != nil {
+		log.Printf("エラー: JSONのパースに失敗しました: %s\n", err)
+		return fmt.Sprintf("%s:矛盾の分析中にエラーが発生しました", strings.Join(files, ","))
+	}
 
-		if len(filteredLines) > 0 {
-			return strings.Join(filteredLines, "\n")
-		}
-		return fmt.Sprintf("%s:矛盾が見つかりましたが、詳細は解析できませんでした", strings.Join(files, ","))
+	// サマリーを表示
+	if structuredResp.Summary != "" {
+		fmt.Printf("分析結果: %s\n", structuredResp.Summary)
 	}
 
 	// 矛盾がない場合は空文字を返す
+	if len(structuredResp.Errors) == 0 {
+		return ""
+	}
+
+	// 矛盾がある場合は、指定された形式で出力
+	var filteredLines []string
+	for _, err := range structuredResp.Errors {
+		// ファイルパスが有効かチェック
+		validFiles := true
+		for _, file := range []string{err.File1, err.File2} {
+			found := false
+			for _, validFile := range files {
+				if file == validFile {
+					found = true
+					break
+				}
+			}
+			if !found {
+				validFiles = false
+				break
+			}
+		}
+
+		if validFiles {
+			filteredLines = append(filteredLines, fmt.Sprintf("%s,%s:%s", err.File1, err.File2, err.Description))
+		}
+	}
+
+	if len(filteredLines) > 0 {
+		return strings.Join(filteredLines, "\n")
+	}
+	return fmt.Sprintf("%s:矛盾が見つかりましたが、詳細は解析できませんでした", strings.Join(files, ","))
+}
+
+// JSONレスポンスを抽出する関数
+func extractJSON(text string) string {
+	// コードブロックで囲まれたJSONを探す
+	jsonBlockRegex := regexp.MustCompile("```(?:json)?\\s*([\\s\\S]*?)```")
+	matches := jsonBlockRegex.FindStringSubmatch(text)
+	if len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+
+	// コードブロックがない場合は、テキスト全体がJSONかもしれない
+	text = strings.TrimSpace(text)
+	if strings.HasPrefix(text, "{") && strings.HasSuffix(text, "}") {
+		return text
+	}
+
 	return ""
 }
