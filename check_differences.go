@@ -180,12 +180,25 @@ func openaiLlmCheck(files []string, contents map[string]string) string {
 		promptBuilder.WriteString("\n\n")
 	}
 
+	// システムのLANG環境変数を取得
+	langEnv := os.Getenv("LANG")
+	if langEnv == "" {
+		langEnv = "ja_JP.UTF-8" // デフォルト値
+	}
+
+	// システムプロンプトにLANG環境変数を含める
+	systemPrompt := fmt.Sprintf(
+		"あなたはコードとドキュメントの間の矛盾を検出し、明確に報告する専門家です。"+
+			"必ず指定されたJSON形式で回答してください。"+
+			"応答言語は環境変数 LANG=%s に従ってください。",
+		langEnv)
+
 	req := openai.ChatCompletionRequest{
 		Model: openai.GPT4o,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
-				Content: "あなたはコードとドキュメントの間の矛盾を検出し、明確に報告する専門家です。必ず指定されたJSON形式で回答してください。",
+				Content: systemPrompt,
 			},
 			{
 				Role:    openai.ChatMessageRoleUser,
@@ -193,6 +206,7 @@ func openaiLlmCheck(files []string, contents map[string]string) string {
 			},
 		},
 		MaxTokens: 1000,
+		Temperature: 0, // 安定した結果のために温度を0に設定
 	}
 
 	resp, err := client.CreateChatCompletion(ctx, req)
