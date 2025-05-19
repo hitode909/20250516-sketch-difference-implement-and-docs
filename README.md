@@ -48,3 +48,25 @@ node run_meta_test.js
 
 各テストケースで期待される結果と実際の結果が一致した場合のみ、メタテストは成功（exit 0）となります。
 テスト結果のサマリーも表示されるため、どのテストケースが成功・失敗したかが一目でわかります。
+
+## 実行例
+
+```
+$ LLM_MODE=openai ./check_differences incorrect/*
+OpenAI APIを使ってファイル間の矛盾を分析しています...
+2025/05/19 12:19:49 OpenAI APIからの応答: incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント1: add関数は数値型に変換していないが、ドキュメントでは数値型に変換されると記載されている
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント2: multiply関数の記載がドキュメントにない
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント3: コマンドライン引数の受け付け数がドキュメントでは2つだが、実際は3つの引数を受け付けている
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント4: モジュールエクスポートでmultiply関数も公開されているが、ドキュメントに記載されていない
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント1: add関数は数値型に変換していないが、ドキュメントでは数値型に変換されると記載されている
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント2: multiply関数の記載がドキュメントにない
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント3: コマンドライン引数の受け付け数がドキュメントでは2つだが、実際は3つの引数を受け付けている
+incorrect/calculator.js,incorrect/calculator.md: 矛盾ポイント4: モジュールエクスポートでmultiply関数も公開されているが、ドキュメントに記載されていない
+```
+
+```
+$ LLM_MODE=openai ./check_differences correct/*
+OpenAI APIを使ってファイル間の矛盾を分析しています...
+2025/05/19 12:23:04 OpenAI APIからの応答: 問題なし
+矛盾は見つかりませんでした
+```

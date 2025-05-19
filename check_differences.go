@@ -39,7 +39,7 @@ func main() {
 
 	// 引数からファイルパスを取得
 	files := os.Args[1:]
-	
+
 	// 各ファイルの存在チェック
 	for _, file := range files {
 		if !fileExists(file) {
@@ -112,21 +112,21 @@ func mockLlmCheck(files []string, contents map[string]string) string {
 	} else {
 		// 矛盾点を出力
 		var contradictions []string
-		
+
 		// 最初の2つのファイルを使った矛盾例を生成
 		file1 := files[0]
 		file2 := files[1]
-		
+
 		contradictions = append(contradictions, fmt.Sprintf("%s,%s:add関数は数値変換を行っていません", file1, file2))
 		contradictions = append(contradictions, fmt.Sprintf("%s,%s:multiply関数がドキュメントに記載されていません", file1, file2))
 		contradictions = append(contradictions, fmt.Sprintf("%s,%s:オプションの第3引数（操作タイプ）がドキュメントに記載されていません", file1, file2))
-		
+
 		// 3つ以上のファイルがある場合は追加の矛盾を生成
 		if len(files) > 2 {
 			file3 := files[2]
 			contradictions = append(contradictions, fmt.Sprintf("%s,%s:ファイル間で機能の説明が一致していません", file1, file3))
 		}
-		
+
 		return strings.Join(contradictions, "\n")
 	}
 }
@@ -146,8 +146,8 @@ func openaiLlmCheck(files []string, contents map[string]string) string {
 	promptBuilder := strings.Builder{}
 	promptBuilder.WriteString("以下の複数ファイルを比較し、不一致や矛盾点を見つけてください。\n")
 	promptBuilder.WriteString("各矛盾点は「ファイル1,ファイル2:矛盾内容」の形式で1行ずつ出力してください。\n")
-	promptBuilder.WriteString("矛盾がない場合は何も出力しないでください。\n\n")
-	
+	promptBuilder.WriteString("矛盾がない場合は「問題なし」と出力してください。\n\n")
+
 	// 各ファイルの内容を追加
 	for _, file := range files {
 		promptBuilder.WriteString(fmt.Sprintf("== ファイル (%s) ==\n", file))
