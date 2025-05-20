@@ -9,12 +9,12 @@
  * @returns {number} 足し算の結果
  */
 function add(a, b) {
-  // 文字列連結として処理（矛盾ポイント1: 数値変換していない）
+  // 文字列連結として処理
   return a + b;
 }
 
 /**
- * 2つの数値を掛け算する関数（矛盾ポイント2: ドキュメントには記載されていない関数）
+ * 2つの数値を掛け算する関数
  * @param {number} a - 1つ目の数値
  * @param {number} b - 2つ目の数値
  * @returns {number} 掛け算の結果
@@ -28,8 +28,6 @@ function multiply(a, b) {
  */
 if (require.main === module) {
   const args = process.argv.slice(2);
-  // 矛盾ポイント3: ドキュメントでは2つの引数が必要と記載しているが、
-  // 実際は3つの引数を受け付ける
   if (args.length < 2 || args.length > 3) {
     console.error('使用方法: node calculator.js <数値1> <数値2> [operation]');
     process.exit(1);
@@ -48,7 +46,6 @@ if (require.main === module) {
 }
 
 // モジュールとしてエクスポート
-// 矛盾ポイント4: ドキュメントにないmultiply関数も公開している
 module.exports = {
   add,
   multiply
